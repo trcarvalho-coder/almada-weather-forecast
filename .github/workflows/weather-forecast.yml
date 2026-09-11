@@ -1,57 +1,83 @@
-name: 🌤️ Atualizar Previsões Almada
+name: Atualizar previsoes
 
 on:
-  # Corre automaticamente 2x por dia
-  schedule:
-    - cron: '0 8 * * *'   # Todos os dias às 08:00 UTC (09:00 PT)
-    - cron: '0 20 * * *'  # Todos os dias às 20:00 UTC (21:00 PT)
-  
-  # Permite correr manualmente (botão no GitHub)
   workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * *"
+    - cron: "0 20 * * *"
+
+permissions:
+  contents: write
 
 jobs:
   update-forecast:
     runs-on: ubuntu-latest
-    
+
     steps:
-    # 1. Download do código
-    - name: Checkout repositório
-      uses: actions/checkout@v3
-    
-    # 2. Configurar Python
-    - name: Configurar Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    # 3. Instalar bibliotecas necessárias
-    - name: Instalar dependências
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests pandas numpy
-    
-    # 4. Executar script de previsão
-    - name: Executar atualização de previsões
-      run: python scripts/update_forecast.py
-    
-    # 5. Guardar resultados no repositório
-    - name: Commit e push resultados
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Actions Weather Bot"
-        git add output/ data/
-        git commit -m "🌤️ Atualização automática $(date +%Y-%m-%d_%H:%M)" || echo "Sem alterações"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    # 6. Criar resumo para o utilizador
-    - name: Mostrar resumo
-      run: |
-        echo "## 📊 Resumo da Atualização" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Data:** $(date +%Y-%m-%d_%H:%M)" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Previsões atualizadas com sucesso!" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "📁 Ver relatório: [relatorio_latest.md](output/relatorio_latest.md)" >> $GITHUB_STEP_SUMMARY
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Validar sintaxe
+        run: |
+          python -m py_compile scripts/update_forecast.py
+
+      - name: Executar previsao
+        run: |
+          python scripts/update_forecast.py
+
+      - name: Confirmar ficheiros gerados
+        run: |
+          test -f output/relatorio_latest.md
+          test -f data/dados_latest.json
+          echo "Relatorio encontrado:"
+          ls -lh output/relatorio_latest.md
+          echo "Dados encontrados:"
+          ls -lh data/dados_latest.json
+
+      - name: Carregar relatorio como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-funchalinho
+          path: |
+            output/relatorio_latest.md
+            data/dados_latest.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Guardar resultados no repositorio
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add output/relatorio_latest.md data/dados_latest.json
+
+          if git diff --cached --quiet; then
+            echo "Os ficheiros existem, mas nao apresentam alteracoes face a versao anterior."
+          else
+            git commit -m "Atualizar previsao Funchalinho"
+            git push
+          fi
+
+      - name: Resumo da execucao
+        run: |
+          {
+            echo "## Resultado"
+            echo ""
+            echo "Relatorio gerado com sucesso."
+            echo ""
+            echo "- [Abrir relatorio](../blob/${GITHUB_SHA}/output/relatorio_latest.md)"
+            echo "- Artefacto: relatorio-funchalinho"
+          } >> "$GITHUB_STEP_SUMMARY"
