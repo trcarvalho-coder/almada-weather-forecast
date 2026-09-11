@@ -235,3 +235,255 @@ def calculate_risk(ipma_daily: dict[str, Any], warnings: dict[str, Any], open_me
             actions.add("Fixar objetos exteriores e verificar a cobertura")
         if tmax is not None and tmax >= 30:
             categories["temperature"] = "MEDIUM"
+                        score += 1
+            actions.add("Manter hidratacao e proteger pessoas vulneraveis do calor")
+
+    if categories["rain"] != "LOW" or categories["wind"] != "LOW":
+        categories["coastal"] = "MEDIUM"
+        actions.add("Evitar arribas, zonas expostas e acessos costeiros durante temporal")
+
+    om_daily = (
+        open_meteo.get("data", {}).get("daily", {})
+        if open_meteo.get("status") == "success"
+        else {}
+    )
+
+    for rain_value in om_daily.get("precipitation_sum", [])[:3]:
+        if isinstance(rain_value, (int, float)) and rain_value >= 40:
+            score += 1
+            actions.add("Confirmar a evolucao da chuva nas atualizacoes IPMA")
+            break
+
+    if score >= 8:
+        overall = "HIGH"
+    elif score >= 3:
+        overall = "MEDIUM"
+    else:
+        overall = "LOW"
+
+    return {
+        "overall": overall,
+        "score": score,
+        "categories": categories,
+        "actions": sorted(actions),
+    }
+
+
+def generate_report(
+    location: dict[str, Any],
+    sources: dict[str, Any],
+    risk: dict[str, Any],
+    timestamp: str,
+) -> str:
+    record = location.get("record", {})
+    location_id = record.get(
+        "globalIdLocal",
+        record.get("global_id_local", IPMA_GLOBAL_ID_FALLBACK),
+    )
+
+    distance = location.get("distance_km")
+    if isinstance(distance, (int, float)):
+        distance_text = f"{distance:.1f} km"
+    else:
+        distance_text = "nao determinada"
+
+    lines = [
+        f"# Relatorio meteorologico e de risco - {LOCATION_NAME}",
+        "",
+        f"**Atualizado:** {timestamp}",
+        f"**Coordenadas:** {LAT}, {LON}",
+        f"**Localidade IPMA:** {location_id}",
+        f"**Distancia aproximada:** {distance_text}",
+        "",
+        "> Este relatorio apoia a preparacao local. "
+        "Nao substitui os avisos oficiais do IPMA, da Protecao Civil ou o 112.",
+        "",
+        f"## Nivel operacional: {risk['overall']}",
+        "",
+        f"**Score:** {risk['score']}",
+        "",
+        "| Categoria | Nivel |",
+        "|---|---|",
+    ]
+
+    for category, level in risk["categories"].items():
+        lines.append(f"| {category.capitalize()} | {level} |")
+
+    lines.extend(["", "## Acoes recomendadas", ""])
+
+    if risk["actions"]:
+        for action in risk["actions"]:
+            lines.append(f"- [ ] {action}")
+    else:
+        lines.append("- Sem acoes adicionais identificadas.")
+
+    daily_payload = sources.get("ipma_daily", {}).get("data", {})
+    daily_records = flatten_daily(daily_payload)
+
+    lines.extend(
+        [
+            "",
+            "## Previsao diaria IPMA",
+            "",
+            "| Data | Temperatura maxima | Precipitacao/probabilidade | Vento |",
+            "|---|---:|---:|---:|",
+        ]
+    )
+
+    for item in daily_records[:5]:
+        date_value = item.get(
+            "forecastDate",
+            item.get("date", item.get("time", "N/D")),
+        )
+        temperature = item.get(
+            "tMax",
+            item.get("temperatureMax", item.get("temp_max", "N/D")),
+        )
+        precipitation = item.get(
+            "precipitaProb",
+            item.get(
+                "precipitationProbability",
+                item.get("precipitation", "N/D"),
+            ),
+        )
+        wind = item.get(
+            "predWindSpeed",
+            item.get("windSpeed", item.get("wind_speed", "N/D")),
+        )
+
+        lines.append(
+            f"| {date_value} | {temperature} | "
+            f"{precipitation} | {wind} |"
+        )
+
+    if not daily_records:
+        lines.append("| Dados IPMA nao disponiveis | N/D | N/D | N/D |")
+
+    lines.extend(["", "## Avisos IPMA", ""])
+
+    warnings = sources.get("warnings", {}).get("relevant", [])
+
+    if warnings:
+        for warning in warnings:
+            warning_text = json.dumps(
+                warning,
+                ensure_ascii=False,
+            )
+            lines.append(f"- `{warning_text}`")
+    else:
+        lines.append(
+            "- Sem aviso relevante identificado para Almada/Setubal."
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Fontes",
+            "",
+            f"- IPMA avisos: {IPMA_WARNINGS_URL}",
+            f"- IPMA previsao diaria: "
+            f"{IPMA_DAILY_TEMPLATE.format(global_id=location_id)}",
+            "- Open-Meteo com ECMWF IFS: previsao numerica auxiliar.",
+            "- NOAA CPC ONI: contexto ENSO, nao previsao local.",
+            "- ECMWF/Copernicus: referencia para previsao sazonal.",
+            "",
+            "## Limites",
+            "",
+            "O score e um indicador operacional de severidade prevista. "
+            "Nao representa a probabilidade estatistica de ocorrencia de "
+            "um desastre local.",
+        ]
+    )
+
+    return "\n".join(lines) + "\n"
+
+
+def main() -> None:
+    timestamp = datetime.now().astimezone().strftime(
+        "%Y-%m-%d %H:%M %Z"
+    )
+
+    print("A procurar a localidade IPMA mais proxima...")
+    location = find_ipma_location()
+
+    record = location.get("record", {})
+    global_id = str(
+        record.get(
+            "globalIdLocal",
+            record.get("global_id_local", IPMA_GLOBAL_ID_FALLBACK),
+        )
+    )
+
+    print(f"Localidade IPMA selecionada: {global_id}")
+
+    print("A recolher avisos IPMA...")
+    warnings = fetch_ipma_warnings()
+
+    print("A recolher previsao diaria IPMA...")
+    ipma_daily = fetch_ipma_daily(global_id)
+
+    print("A recolher previsoes IPMA de curto prazo...")
+    ipma_hp = fetch_ipma_hp_days()
+
+    print("A recolher previsao Open-Meteo/ECMWF...")
+    open_meteo = fetch_open_meteo()
+
+    print("A recolher contexto NOAA...")
+    noaa = fetch_noaa_enso()
+
+    sources = {
+        "warnings": warnings,
+        "ipma_daily": ipma_daily,
+        "ipma_hp": ipma_hp,
+        "open_meteo": open_meteo,
+        "noaa": noaa,
+    }
+
+    print("A calcular risco...")
+    risk = calculate_risk(
+        ipma_daily,
+        warnings,
+        open_meteo,
+    )
+
+    print("A gerar relatorio...")
+    report = generate_report(
+        location,
+        sources,
+        risk,
+        timestamp,
+    )
+
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    DATA_DIR.mkdir(exist_ok=True)
+
+    report_path = OUTPUT_DIR / "relatorio_latest.md"
+    data_path = DATA_DIR / "dados_latest.json"
+
+    report_path.write_text(
+        report,
+        encoding="utf-8",
+    )
+
+    data_path.write_text(
+        json.dumps(
+            {
+                "timestamp": timestamp,
+                "location": location,
+                "sources": sources,
+                "risk": risk,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    print(f"Relatorio criado: {report_path}")
+    print(f"Dados criados: {data_path}")
+    print(f"Risco operacional: {risk['overall']}")
+    print(f"Score: {risk['score']}")
+
+
+if __name__ == "__main__":
+    main()
