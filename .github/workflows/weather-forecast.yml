@@ -45,9 +45,9 @@ jobs:
         run: |
           test -f output/relatorio_latest.md
           test -f data/dados_latest.json
-          echo "Relatorio:"
+          echo "Relatorio gerado:"
           wc -c output/relatorio_latest.md
-          echo "Dados:"
+          echo "Dados gerados:"
           wc -c data/dados_latest.json
 
       - name: Mostrar resumo dos avisos
@@ -58,11 +58,15 @@ jobs:
 
           path = Path("data/dados_latest.json")
           data = json.loads(path.read_text(encoding="utf-8"))
-          source = data["sources"]["warnings"]
+          warnings = data["sources"]["warnings"]
+          station = data["sources"]["nearest_station"]
+          open_meteo = data["sources"]["open_meteo"]
 
-          print("Estado:", source.get("status"))
-          print("Total de registos:", source.get("total_records"))
-          print("Registos relevantes:", source.get("relevant_count"))
+          print("Avisos IPMA recebidos:", warnings.get("total_records"))
+          print("Avisos IPMA relevantes:", warnings.get("relevant_count"))
+          print("Estacao IPMA:", station.get("record", {}))
+          print("Distancia estacao km:", station.get("distance_km"))
+          print("Open-Meteo/ECMWF status:", open_meteo.get("status"))
           PY
 
       - name: Carregar relatorio como artefacto
@@ -93,7 +97,9 @@ jobs:
           {
             echo "## Relatorio Funchalinho"
             echo ""
-            echo "Relatorio gerado e validado com sucesso."
+            echo "Relatorio gerado com sucesso."
             echo ""
-            echo "O ficheiro tambem esta disponivel em Artifacts."
+            echo "Inclui IPMA, estacao proxima, Open-Meteo/ECMWF e NOAA."
+            echo ""
+            echo "O ficheiro esta tambem disponivel em Artifacts."
           } >> "$GITHUB_STEP_SUMMARY"
