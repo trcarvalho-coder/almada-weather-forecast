@@ -193,66 +193,152 @@ def number(item: dict[str, Any], *keys: str, default: float | None = None) -> fl
             continue
     return default
 
+def calculate_risk(
+    ipma_daily: dict[str, Any],
+    warnings: dict[str, Any],
+    open_meteo: dict[str, Any],
+) -> dict[str, Any]:
+    """Calcula o risco operacional para os próximos três dias."""
 
-def calculate_risk(ipma_daily: dict[str, Any], warnings: dict[str, Any], open_meteo: dict[str, Any]) -> dict[str, Any]:
-    """Calcula risco operacional conservador para os proximos 3 dias.
-
-    Nao estima probabilidade de um desastre. Classifica a severidade prevista e
-    a existencia de aviso oficial. O aviso IPMA prevalece sobre fontes auxiliares.
-    """
     score = 0
     actions: set[str] = set()
-    categories = {"wind": "LOW", "rain": "LOW", "coastal": "LOW", "temperature": "LOW"}
 
-    warning_text = json.dumps(warnings.get("relevant", []), ensure_ascii=False).lower()
+    categories = {
+        "wind": "LOW",
+        "rain": "LOW",
+        "coastal": "LOW",
+        "temperature": "LOW",
+    }
+
+    warning_text = json.dumps(
+        warnings.get("relevant", []),
+        ensure_ascii=False,
+    ).lower()
+
     if "vermelho" in warning_text or '"red"' in warning_text:
         score += 5
-        actions.add("Seguir imediatamente as instrucoes da Protecao Civil")
+        actions.add(
+            "Seguir imediatamente as instruções da Proteção Civil"
+        )
+
     elif "laranja" in warning_text or '"orange"' in warning_text:
         score += 3
-        actions.add("Preparar a habitacao e limitar deslocacoes")
+        actions.add(
+            "Preparar a habitação e limitar deslocações"
+        )
+
     elif "amarelo" in warning_text or '"yellow"' in warning_text:
         score += 1
-        actions.add("Monitorizar o aviso e a atualizacao seguinte do IPMA")
+        actions.add(
+            "Monitorizar o aviso e a atualização seguinte do IPMA"
+        )
 
-    for item in flatten_daily(ipma_daily.get("data", {}))[:5]:
-        rain = number(item, "precipitaProb", "precipitationProbability", "precipitation", "precipitationSum")
-        wind = number(item, "predWindSpeed", "windSpeed", "wind_speed")
-        gust = number(item, "windGust", "wind_gusts", "gust")
-        tmax = number(item, "tMax", "temperatureMax", "temp_max")
+    daily_records = flatten_daily(
+        ipma_daily.get("data", {})
+    )
+
+    for item in daily_records[:5]:
+        rain = number(
+            item,
+            "precipitaProb",
+            "precipitationProbability",
+            "precipitation",
+            "precipitationSum",
+        )
+
+        wind = number(
+            item,
+            "predWindSpeed",
+            "windSpeed",
+            "wind_speed",
+        )
+
+        gust = number(
+            item,
+            "windGust",
+            "wind_gusts",
+            "gust",
+        )
+
+        tmax = number(
+            item,
+            "tMax",
+            "temperatureMax",
+            "temp_max",
+        )
 
         if rain is not None and rain >= 60:
             categories["rain"] = "HIGH"
             score += 3
-            actions.add("Verificar caleiras, sumidouros e drenagem")
+            actions.add(
+                "Verificar caleiras, sumidouros e drenagem"
+            )
+
         elif rain is not None and rain >= 30:
-            categories["rain"] = "MEDIUM"
+            if categories["rain"] != "HIGH":
+                categories["rain"] = "MEDIUM"
+
             score += 1
-            actions.add("Monitorizar acumulacao de agua")
-        if (gust is not None and gust >= 90) or (wind is not None and wind >= 70):
-            categories["wind"] = "HIGH" if (gust or 0) >= 100 else "MEDIUM"
-            score += 3 if categories["wind"] == "HIGH" else 1
-            actions.add("Fixar objetos exteriores e verificar a cobertura")
+            actions.add(
+                "Monitorizar acumulação de água"
+            )
+
+        if (
+            (gust is not None and gust >= 90)
+            or (wind is not None and wind >= 70)
+        ):
+            if (
+                gust is not None
+                and gust >= 100
+            ):
+                categories["wind"] = "HIGH"
+                score += 3
+            else:
+                if categories["wind"] != "HIGH":
+                    categories["wind"] = "MEDIUM"
+
+                score += 1
+
+            actions.add(
+                "Fixar objetos exteriores e verificar a cobertura"
+            )
+
         if tmax is not None and tmax >= 30:
             categories["temperature"] = "MEDIUM"
-                        score += 1
-            actions.add("Manter hidratacao e proteger pessoas vulneraveis do calor")
-
-    if categories["rain"] != "LOW" or categories["wind"] != "LOW":
-        categories["coastal"] = "MEDIUM"
-        actions.add("Evitar arribas, zonas expostas e acessos costeiros durante temporal")
-
-    om_daily = (
-        open_meteo.get("data", {}).get("daily", {})
-        if open_meteo.get("status") == "success"
-        else {}
-    )
-
-    for rain_value in om_daily.get("precipitation_sum", [])[:3]:
-        if isinstance(rain_value, (int, float)) and rain_value >= 40:
             score += 1
-            actions.add("Confirmar a evolucao da chuva nas atualizacoes IPMA")
-            break
+            actions.add(
+                "Manter hidratação e proteger pessoas vulneráveis do calor"
+            )
+
+    if (
+        categories["rain"] != "LOW"
+        or categories["wind"] != "LOW"
+    ):
+        categories["coastal"] = "MEDIUM"
+        actions.add(
+            "Evitar arribas, zonas expostas e acessos costeiros durante temporal"
+        )
+
+    if open_meteo.get("status") == "success":
+        open_meteo_daily = (
+            open_meteo
+            .get("data", {})
+            .get("daily", {})
+        )
+
+        for rain_value in open_meteo_daily.get(
+            "precipitation_sum",
+            [],
+        )[:3]:
+            if (
+                isinstance(rain_value, (int, float))
+                and rain_value >= 40
+            ):
+                score += 1
+                actions.add(
+                    "Confirmar a evolução da chuva nas atualizações IPMA"
+                )
+                break
 
     if score >= 8:
         overall = "HIGH"
