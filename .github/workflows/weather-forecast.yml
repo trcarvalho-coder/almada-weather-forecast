@@ -41,22 +41,29 @@ jobs:
         run: |
           python scripts/update_forecast.py
 
-      - name: Inspecionar ficheiros gerados
+      - name: Confirmar ficheiros gerados
         run: |
-          echo "Diretorio atual:"
-          pwd
-
-          echo "Conteudo do diretorio:"
-          find . -maxdepth 3 -type f | sort
-
-          echo "Verificacao do relatorio:"
           test -f output/relatorio_latest.md
-
-          echo "Verificacao dos dados:"
           test -f data/dados_latest.json
-
-          echo "Tamanho do relatorio:"
+          echo "Relatorio:"
           wc -c output/relatorio_latest.md
+          echo "Dados:"
+          wc -c data/dados_latest.json
+
+      - name: Mostrar resumo dos avisos
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data/dados_latest.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          source = data["sources"]["warnings"]
+
+          print("Estado:", source.get("status"))
+          print("Total de registos:", source.get("total_records"))
+          print("Registos relevantes:", source.get("relevant_count"))
+          PY
 
       - name: Carregar relatorio como artefacto
         uses: actions/upload-artifact@v5
@@ -72,7 +79,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add output/relatorio_latest.md data/dados_latest.json
 
           if git diff --cached --quiet; then
@@ -82,10 +88,12 @@ jobs:
             git push origin HEAD:${GITHUB_REF_NAME}
           fi
 
-      - name: Resumo
+      - name: Resumo da execucao
         run: |
-          echo "## Relatorio meteorologico" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Relatorio gerado e validado." >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "O artefacto esta disponivel em Artifacts." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Relatorio Funchalinho"
+            echo ""
+            echo "Relatorio gerado e validado com sucesso."
+            echo ""
+            echo "O ficheiro tambem esta disponivel em Artifacts."
+          } >> "$GITHUB_STEP_SUMMARY"
