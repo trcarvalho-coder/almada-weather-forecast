@@ -1,4 +1,4 @@
-name: Atualizar previsoes
+name: Atualizar previsoes Funchalinho
 
 on:
   workflow_dispatch:
@@ -9,19 +9,22 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   update-forecast:
     runs-on: ubuntu-latest
 
     steps:
       - name: Obter repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          persist-credentials: true
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -34,21 +37,29 @@ jobs:
         run: |
           python -m py_compile scripts/update_forecast.py
 
-      - name: Executar previsao
+      - name: Executar script
         run: |
           python scripts/update_forecast.py
 
-      - name: Confirmar ficheiros gerados
+      - name: Inspecionar ficheiros gerados
         run: |
+          echo "Diretorio atual:"
+          pwd
+
+          echo "Conteudo do diretorio:"
+          find . -maxdepth 3 -type f | sort
+
+          echo "Verificacao do relatorio:"
           test -f output/relatorio_latest.md
+
+          echo "Verificacao dos dados:"
           test -f data/dados_latest.json
-          echo "Relatorio encontrado:"
-          ls -lh output/relatorio_latest.md
-          echo "Dados encontrados:"
-          ls -lh data/dados_latest.json
+
+          echo "Tamanho do relatorio:"
+          wc -c output/relatorio_latest.md
 
       - name: Carregar relatorio como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: relatorio-funchalinho
           path: |
@@ -59,25 +70,22 @@ jobs:
 
       - name: Guardar resultados no repositorio
         run: |
-          git config user.name "GitHub Actions"
+          git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add output/relatorio_latest.md data/dados_latest.json
 
           if git diff --cached --quiet; then
-            echo "Os ficheiros existem, mas nao apresentam alteracoes face a versao anterior."
+            echo "Nao existem alteracoes para gravar."
           else
-            git commit -m "Atualizar previsao Funchalinho"
-            git push
+            git commit -m "Atualizar relatorio Funchalinho"
+            git push origin HEAD:${GITHUB_REF_NAME}
           fi
 
-      - name: Resumo da execucao
+      - name: Resumo
         run: |
-          {
-            echo "## Resultado"
-            echo ""
-            echo "Relatorio gerado com sucesso."
-            echo ""
-            echo "- [Abrir relatorio](../blob/${GITHUB_SHA}/output/relatorio_latest.md)"
-            echo "- Artefacto: relatorio-funchalinho"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "## Relatorio meteorologico" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Relatorio gerado e validado." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "O artefacto esta disponivel em Artifacts." >> "$GITHUB_STEP_SUMMARY"
