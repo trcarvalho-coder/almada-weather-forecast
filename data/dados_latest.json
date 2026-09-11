@@ -1,13 +1,21 @@
 {
-  "timestamp": "2026-09-11 16:56 UTC",
+  "timestamp": "2026-09-11 17:06 UTC",
   "location": {
-    "status": "error",
-    "error": "Expecting value: line 1 column 1 (char 0)"
+    "status": "error_fallback",
+    "error": "Expecting value: line 1 column 1 (char 0)",
+    "record": {
+      "globalIdLocal": "1110600",
+      "localidade": "Almada (fallback)"
+    },
+    "distance_km": null
   },
   "sources": {
     "warnings": {
       "source": "IPMA warnings",
       "status": "success",
+      "retrieved_at": "2026-09-11T17:06:30.909042+00:00",
+      "total_records": 217,
+      "relevant_count": 0,
       "all": [
         {
           "text": "",
@@ -2459,7 +2467,7 @@
       "data": {
         "latitude": 38.75,
         "longitude": -9.25,
-        "generationtime_ms": 1.6776323318481445,
+        "generationtime_ms": 0.4856586456298828,
         "utc_offset_seconds": 3600,
         "timezone": "Europe/Lisbon",
         "timezone_abbreviation": "GMT+1",
@@ -3616,7 +3624,7 @@
       "temperature": "MEDIUM"
     },
     "actions": [
-      "Manter hidratação e proteger pessoas vulneráveis do calor"
+      "Manter hidratacao e proteger pessoas vulneraveis"
     ]
   }
 }

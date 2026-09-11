@@ -1,8 +1,8 @@
-# Relatorio meteorologico e de risco - Funchalinho, Almada
+# Relatorio meteorologico - Funchalinho, Almada
 
-**Atualizado:** 2026-09-11 16:56 UTC
+**Atualizado:** 2026-09-11 17:06 UTC
 **Coordenadas:** 38.641, -9.169
-**Localidade IPMA:** 1110600
+**GlobalIdLocal IPMA:** 1110600
 **Distancia aproximada:** nao determinada
 
 > Este relatorio apoia a preparacao local. Nao substitui os avisos oficiais do IPMA, da Protecao Civil ou o 112.
@@ -20,9 +20,9 @@
 
 ## Acoes recomendadas
 
-- [ ] Manter hidratação e proteger pessoas vulneráveis do calor
+- [ ] Manter hidratacao e proteger pessoas vulneraveis
 
-## Previsao diaria IPMA
+## Previsao diaria IPMA ate 5 dias
 
 | Data | Temperatura maxima | Precipitacao/probabilidade | Vento |
 |---|---:|---:|---:|
@@ -32,18 +32,20 @@
 | 2026-09-14 | 35.6 | 0.0 | N/D |
 | 2026-09-15 | 30.7 | 0.0 | N/D |
 
-## Avisos IPMA
+## Avisos IPMA para os proximos 3 dias
 
-- Sem aviso relevante identificado para Almada/Setubal.
+Nao foram identificados avisos IPMA aplicaveis a Setubal/Almada.
+Registos recebidos pelo endpoint: 217
 
-## Fontes
+## Outras fontes
 
 - IPMA avisos: https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json
-- IPMA previsao diaria: https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/1110600.json
-- Open-Meteo com ECMWF IFS: previsao numerica auxiliar.
+- IPMA previsao local: https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/1110600.json
+- IPMA curto prazo dias 1-3: https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/hp-daily-forecast-day{idDay}.json
+- Open-Meteo com ECMWF IFS: previsao numerica auxiliar ate 7 dias.
 - NOAA CPC ONI: contexto ENSO, nao previsao local.
-- ECMWF/Copernicus: referencia para previsao sazonal.
+- ECMWF/Copernicus: referencia adequada para previsao sazonal.
 
 ## Limites
 
-O score e um indicador operacional de severidade prevista. Nao representa a probabilidade estatistica de ocorrencia de um desastre local.
+O score e um indicador de severidade operacional prevista. Nao representa a probabilidade estatistica de um desastre local.
