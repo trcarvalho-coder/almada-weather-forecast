@@ -1,188 +1,504 @@
 #!/usr/bin/env python3
-"""Atualiza previsoes e risco local para Funchalinho, Almada.
+"""Previsao e risco local para Almada.
 
 Fontes:
-- IPMA: avisos oficiais, previsao diaria local ate 5 dias e previsao de curto prazo.
-- Open-Meteo/ECMWF IFS: apoio numerico ate 7 dias; nao substitui avisos IPMA.
-- NOAA CPC/NCEI: contexto ENSO e previsao sazonal/teleconexoes.
+- IPMA: avisos oficiais e previsao diaria local.
+- Open-Meteo com ECMWF IFS: previsao numerica auxiliar.
+- NOAA CPC: contexto ENSO/ONI.
 
-Nota: ECMWF Open Data AWS nao e usado como se fosse uma previsao sazonal.
-Os ficheiros AWS sao previsoes numericas de curto/medio prazo e requerem
-processamento GRIB. Para sazonalidade, o relatorio referencia ECMWF/C3S e
-NOAA CPC, sem converter sinais mensais em probabilidades locais de temporal.
+O script nao calcula a probabilidade estatistica de um desastre.
+Classifica a severidade operacional prevista e mostra avisos oficiais.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import requests
 
-LAT = 38.641  # aproximacao ao Funchalinho; ajustar se houver coordenadas exatas
+LAT = 38.641
 LON = -9.169
 LOCATION_NAME = "Funchalinho, Almada"
 TIMEOUT = 30
+
 OUTPUT_DIR = Path("output")
 DATA_DIR = Path("data")
 
-# O IPMA usa localidades administrativas/georreferenciadas. O script tenta
-# descobrir automaticamente a localidade mais proxima; este valor e fallback.
-IPMA_GLOBAL_ID_FALLBACK = "1110600"  # Almada; confirmar no endpoint de localidades
+# Almada e usado apenas como fallback se a pesquisa automatica falhar.
+IPMA_GLOBAL_ID_FALLBACK = "1110600"
 
-IPMA_WARNINGS_URL = "https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json"
-IPMA_DAILY_TEMPLATE = "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/{global_id}.json"
-IPMA_HP_TEMPLATE = "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/hp-daily-forecast-day{id_day}.json"
-IPMA_LOCATIONS_URL = "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily"
+IPMA_WARNINGS_URL = (
+    "https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json"
+)
+IPMA_DAILY_TEMPLATE = (
+    "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/"
+    "{global_id}.json"
+)
+IPMA_HP_TEMPLATE = (
+    "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/"
+    "hp-daily-forecast-day{id_day}.json"
+)
+IPMA_LOCATIONS_URL = (
+    "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily"
+)
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
-
-# NOAA publico: contexto oficial ENSO. A estrutura pode mudar; a recolha falha
-# silenciosamente e o relatorio marca a fonte como indisponivel.
-NOAA_ENSO_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt"
+NOAA_ONI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt"
 
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "funchalinho-weather-risk/1.0"})
+SESSION.headers.update(
+    {"User-Agent": "funchalinho-weather-risk/1.0"}
+)
 
 
-def get_json(url: str, params: dict[str, Any] | None = None) -> Any:
-    response = SESSION.get(url, params=params, timeout=TIMEOUT)
+def get_json(
+    url: str,
+    params: dict[str, Any] | None = None,
+) -> Any:
+    response = SESSION.get(
+        url,
+        params=params,
+        timeout=TIMEOUT,
+    )
     response.raise_for_status()
     return response.json()
 
 
-def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def extract_records(payload: Any) -> list[dict[str, Any]]:
+    """Extrai listas de registos de diferentes estruturas JSON."""
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+
+    if isinstance(payload, dict):
+        for key in (
+            "data",
+            "items",
+            "locations",
+            "localidades",
+            "forecast",
+            "forecastData",
+        ):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+
+    return []
+
+
+def haversine_km(
+    lat1: float,
+    lon1: float,
+    lat2: float,
+    lon2: float,
+) -> float:
     from math import asin, cos, radians, sin, sqrt
 
     radius = 6371.0
     dlat = radians(lat2 - lat1)
     dlon = radians(lon2 - lon1)
-    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
-    return 2 * radius * asin(sqrt(a))
+
+    value = (
+        sin(dlat / 2) ** 2
+        + cos(radians(lat1))
+        * cos(radians(lat2))
+        * sin(dlon / 2) ** 2
+    )
+
+    return 2 * radius * asin(sqrt(value))
 
 
-def extract_records(payload: Any) -> list[dict[str, Any]]:
-    if isinstance(payload, list):
-        return [x for x in payload if isinstance(x, dict)]
-    if isinstance(payload, dict):
-        for key in ("data", "items", "locations", "localidades"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                return [x for x in value if isinstance(x, dict)]
-    return []
+def first_value(
+    item: dict[str, Any],
+    keys: tuple[str, ...],
+) -> Any:
+    for key in keys:
+        value = item.get(key)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def parse_datetime(value: Any) -> datetime | None:
+    if value in (None, ""):
+        return None
+
+    text = str(value).strip()
+
+    try:
+        parsed = datetime.fromisoformat(
+            text.replace("Z", "+00:00")
+        )
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        pass
+
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%d-%m-%Y %H:%M",
+    ):
+        try:
+            return datetime.strptime(
+                text,
+                fmt,
+            ).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+
+    return None
 
 
 def find_ipma_location() -> dict[str, Any]:
-    """Procura a localidade IPMA mais proxima das coordenadas do Funchalinho."""
+    """Seleciona a localidade IPMA mais proxima das coordenadas indicadas."""
     try:
         payload = get_json(IPMA_LOCATIONS_URL)
         records = extract_records(payload)
-        candidates = []
+        candidates: list[tuple[float, dict[str, Any]]] = []
+
         for item in records:
-            lat = item.get("latitude", item.get("lat"))
-            lon = item.get("longitude", item.get("lon"))
-            gid = item.get("globalIdLocal", item.get("global_id_local"))
-            if lat is None or lon is None or gid is None:
+            latitude = first_value(
+                item,
+                ("latitude", "lat"),
+            )
+            longitude = first_value(
+                item,
+                ("longitude", "lon"),
+            )
+            global_id = first_value(
+                item,
+                ("globalIdLocal", "global_id_local"),
+            )
+
+            if latitude is None or longitude is None or global_id is None:
                 continue
+
             try:
-                distance = haversine_km(LAT, LON, float(lat), float(lon))
+                distance = haversine_km(
+                    LAT,
+                    LON,
+                    float(latitude),
+                    float(longitude),
+                )
             except (TypeError, ValueError):
                 continue
+
             candidates.append((distance, item))
+
         if candidates:
-            return {"status": "success", "record": min(candidates, key=lambda x: x[0])[1], "distance_km": min(candidates)[0]}
+            distance, record = min(
+                candidates,
+                key=lambda pair: pair[0],
+            )
+            return {
+                "status": "success",
+                "record": record,
+                "distance_km": distance,
+            }
+
+        return {
+            "status": "fallback",
+            "record": {
+                "globalIdLocal": IPMA_GLOBAL_ID_FALLBACK,
+                "localidade": "Almada (fallback)",
+            },
+            "distance_km": None,
+        }
+
     except Exception as exc:
-        return {"status": "error", "error": str(exc)}
-    return {"status": "fallback", "record": {"globalIdLocal": IPMA_GLOBAL_ID_FALLBACK}, "distance_km": None}
+        return {
+            "status": "error_fallback",
+            "error": str(exc),
+            "record": {
+                "globalIdLocal": IPMA_GLOBAL_ID_FALLBACK,
+                "localidade": "Almada (fallback)",
+            },
+            "distance_km": None,
+        }
+
+
+def warning_area_text(item: dict[str, Any]) -> str:
+    value = first_value(
+        item,
+        (
+            "idAreaAviso",
+            "idArea",
+            "area",
+            "areaAviso",
+            "district",
+            "districtName",
+            "local",
+            "localidade",
+        ),
+    )
+
+    return str(value or "").strip().lower()
+
+
+def warning_applies_to_setubal(item: dict[str, Any]) -> bool:
+    """Identifica avisos de Setubal/Almada no payload do IPMA."""
+    area = warning_area_text(item)
+    text = json.dumps(
+        item,
+        ensure_ascii=False,
+    ).lower()
+
+    known_area_values = {
+        "set",
+        "setubal",
+        "setúbal",
+        "17",
+        "1700",
+        "17-setubal",
+    }
+
+    if area in known_area_values:
+        return True
+
+    return any(
+        term in text
+        for term in ("setúbal", "setubal", "almada")
+    )
+
+
+def warning_intersects_next_three_days(
+    item: dict[str, Any],
+) -> bool:
+    """Verifica se o aviso e valido agora ou nos proximos 3 dias."""
+    now = datetime.now(timezone.utc)
+    limit = now + timedelta(days=3)
+
+    start_value = first_value(
+        item,
+        (
+            "startTime",
+            "start",
+            "inicio",
+            "inicioAviso",
+            "dtInicio",
+            "dateStart",
+            "validFrom",
+        ),
+    )
+    end_value = first_value(
+        item,
+        (
+            "endTime",
+            "end",
+            "fim",
+            "fimAviso",
+            "dtFim",
+            "dateEnd",
+            "validTo",
+        ),
+    )
+
+    start = parse_datetime(start_value)
+    end = parse_datetime(end_value)
+
+    # Se o esquema nao apresentar datas, o endpoint e tratado como lista
+    # de avisos atuais e o registo nao e descartado.
+    if start is None and end is None:
+        return True
+
+    if start is None:
+        start = now
+    if end is None:
+        end = limit
+
+    return start <= limit and end >= now
 
 
 def fetch_ipma_warnings() -> dict[str, Any]:
-    """Recolhe os avisos oficiais IPMA, normalmente validos ate 3 dias."""
+    """Recolhe e filtra avisos IPMA para Setubal/Almada."""
     try:
         payload = get_json(IPMA_WARNINGS_URL)
         records = extract_records(payload)
-        # O esquema IPMA pode usar idAreaAviso, district ou local.
-        relevant = []
+        relevant: list[dict[str, Any]] = []
+
         for item in records:
-            text = json.dumps(item, ensure_ascii=False).lower()
-            if any(term in text for term in ("setúbal", "setubal", "almada")):
-                relevant.append(item)
-        return {"source": "IPMA warnings", "status": "success", "all": records, "relevant": relevant}
+            if not warning_applies_to_setubal(item):
+                continue
+            if not warning_intersects_next_three_days(item):
+                continue
+            relevant.append(item)
+
+        return {
+            "source": "IPMA warnings",
+            "status": "success",
+            "retrieved_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "total_records": len(records),
+            "relevant_count": len(relevant),
+            "all": records,
+            "relevant": relevant,
+        }
+
     except Exception as exc:
-        return {"source": "IPMA warnings", "status": "error", "error": str(exc), "all": [], "relevant": []}
+        return {
+            "source": "IPMA warnings",
+            "status": "error",
+            "error": str(exc),
+            "total_records": 0,
+            "relevant_count": 0,
+            "all": [],
+            "relevant": [],
+        }
 
 
 def fetch_ipma_daily(global_id: str) -> dict[str, Any]:
-    """Recolhe a previsao IPMA local ate 5 dias."""
+    """Recolhe a previsao IPMA local ate cinco dias."""
     url = IPMA_DAILY_TEMPLATE.format(global_id=global_id)
+
     try:
-        payload = get_json(url)
-        return {"source": "IPMA daily", "status": "success", "url": url, "data": payload}
+        return {
+            "source": "IPMA daily",
+            "status": "success",
+            "url": url,
+            "data": get_json(url),
+        }
     except Exception as exc:
-        return {"source": "IPMA daily", "status": "error", "url": url, "error": str(exc), "data": {}}
+        return {
+            "source": "IPMA daily",
+            "status": "error",
+            "url": url,
+            "error": str(exc),
+            "data": {},
+        }
 
 
 def fetch_ipma_hp_days() -> dict[str, Any]:
-    """Recolhe as previsoes IPMA de curto prazo hp-daily-forecast-day{idDay}."""
-    result = {}
+    """Recolhe os endpoints IPMA hp-daily dos dias 1 a 3."""
+    result: dict[str, Any] = {}
+
     for day_id in range(1, 4):
         url = IPMA_HP_TEMPLATE.format(id_day=day_id)
+
         try:
-            result[str(day_id)] = {"status": "success", "url": url, "data": get_json(url)}
+            result[str(day_id)] = {
+                "status": "success",
+                "url": url,
+                "data": get_json(url),
+            }
         except Exception as exc:
-            result[str(day_id)] = {"status": "error", "url": url, "error": str(exc), "data": {}}
-    return {"source": "IPMA high priority daily", "status": "success", "days": result}
+            result[str(day_id)] = {
+                "status": "error",
+                "url": url,
+                "error": str(exc),
+                "data": {},
+            }
+
+    return {
+        "source": "IPMA high priority daily",
+        "status": "success",
+        "days": result,
+    }
 
 
 def fetch_open_meteo() -> dict[str, Any]:
-    """Recolhe previsao de apoio baseada no ECMWF IFS/Open-Meteo."""
+    """Recolhe previsao auxiliar do ECMWF IFS via Open-Meteo."""
     params = {
         "latitude": LAT,
         "longitude": LON,
-        "daily": ",".join([
-            "precipitation_sum", "precipitation_probability_max", "wind_speed_10m_max",
-            "wind_gusts_10m_max", "temperature_2m_max", "temperature_2m_min",
-            "pressure_msl_mean", "weather_code"
-        ]),
-        "hourly": "precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,pressure_msl",
+        "daily": ",".join(
+            [
+                "precipitation_sum",
+                "precipitation_probability_max",
+                "wind_speed_10m_max",
+                "wind_gusts_10m_max",
+                "temperature_2m_max",
+                "temperature_2m_min",
+                "pressure_msl_mean",
+                "weather_code",
+            ]
+        ),
+        "hourly": ",".join(
+            [
+                "precipitation",
+                "precipitation_probability",
+                "wind_speed_10m",
+                "wind_gusts_10m",
+                "pressure_msl",
+            ]
+        ),
         "forecast_days": 7,
         "timezone": "Europe/Lisbon",
         "models": "ecmwf_ifs025",
     }
+
     try:
-        return {"source": "Open-Meteo ECMWF IFS", "status": "success", "data": get_json(OPEN_METEO_URL, params)}
+        return {
+            "source": "Open-Meteo ECMWF IFS",
+            "status": "success",
+            "data": get_json(OPEN_METEO_URL, params),
+        }
     except Exception as exc:
-        return {"source": "Open-Meteo ECMWF IFS", "status": "error", "error": str(exc), "data": {}}
+        return {
+            "source": "Open-Meteo ECMWF IFS",
+            "status": "error",
+            "error": str(exc),
+            "data": {},
+        }
 
 
 def fetch_noaa_enso() -> dict[str, Any]:
-    """Recolhe ONI da NOAA CPC como contexto climatico, nao como previsao local."""
+    """Recolhe contexto ONI da NOAA CPC; nao e previsao local."""
     try:
-        response = SESSION.get(NOAA_ENSO_URL, timeout=TIMEOUT)
+        response = SESSION.get(
+            NOAA_ONI_URL,
+            timeout=TIMEOUT,
+        )
         response.raise_for_status()
-        lines = [line.strip() for line in response.text.splitlines() if line.strip() and not line.startswith("#")]
-        return {"source": "NOAA CPC ONI", "status": "success", "url": NOAA_ENSO_URL, "latest_lines": lines[-8:]}
+
+        lines = [
+            line.strip()
+            for line in response.text.splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
+
+        return {
+            "source": "NOAA CPC ONI",
+            "status": "success",
+            "url": NOAA_ONI_URL,
+            "latest_lines": lines[-8:],
+        }
+
     except Exception as exc:
-        return {"source": "NOAA CPC ONI", "status": "error", "url": NOAA_ENSO_URL, "error": str(exc), "latest_lines": []}
+        return {
+            "source": "NOAA CPC ONI",
+            "status": "error",
+            "url": NOAA_ONI_URL,
+            "error": str(exc),
+            "latest_lines": [],
+        }
 
 
 def flatten_daily(payload: Any) -> list[dict[str, Any]]:
-    """Normaliza alguns esquemas comuns do IPMA para uma lista de dias."""
     records = extract_records(payload)
     if records:
         return records
+
     if isinstance(payload, dict):
         for key in ("forecast", "forecastData", "data"):
             value = payload.get(key)
             if isinstance(value, list):
-                return [x for x in value if isinstance(x, dict)]
+                return [
+                    item for item in value
+                    if isinstance(item, dict)
+                ]
+
     return []
 
 
-def number(item: dict[str, Any], *keys: str, default: float | None = None) -> float | None:
+def number(
+    item: dict[str, Any],
+    *keys: str,
+) -> float | None:
     for key in keys:
         value = item.get(key)
         if value in (None, "", "null"):
@@ -191,15 +507,15 @@ def number(item: dict[str, Any], *keys: str, default: float | None = None) -> fl
             return float(value)
         except (TypeError, ValueError):
             continue
-    return default
+    return None
+
 
 def calculate_risk(
     ipma_daily: dict[str, Any],
     warnings: dict[str, Any],
     open_meteo: dict[str, Any],
 ) -> dict[str, Any]:
-    """Calcula o risco operacional para os próximos três dias."""
-
+    """Calcula severidade operacional dos proximos tres dias."""
     score = 0
     actions: set[str] = set()
 
@@ -218,19 +534,17 @@ def calculate_risk(
     if "vermelho" in warning_text or '"red"' in warning_text:
         score += 5
         actions.add(
-            "Seguir imediatamente as instruções da Proteção Civil"
+            "Seguir imediatamente as instrucoes da Protecao Civil"
         )
-
     elif "laranja" in warning_text or '"orange"' in warning_text:
         score += 3
         actions.add(
-            "Preparar a habitação e limitar deslocações"
+            "Preparar a habitacao e limitar deslocacoes"
         )
-
     elif "amarelo" in warning_text or '"yellow"' in warning_text:
         score += 1
         actions.add(
-            "Monitorizar o aviso e a atualização seguinte do IPMA"
+            "Monitorizar o aviso e a atualizacao seguinte do IPMA"
         )
 
     daily_records = flatten_daily(
@@ -245,21 +559,18 @@ def calculate_risk(
             "precipitation",
             "precipitationSum",
         )
-
         wind = number(
             item,
             "predWindSpeed",
             "windSpeed",
             "wind_speed",
         )
-
         gust = number(
             item,
             "windGust",
             "wind_gusts",
             "gust",
         )
-
         tmax = number(
             item,
             "tMax",
@@ -273,30 +584,24 @@ def calculate_risk(
             actions.add(
                 "Verificar caleiras, sumidouros e drenagem"
             )
-
         elif rain is not None and rain >= 30:
             if categories["rain"] != "HIGH":
                 categories["rain"] = "MEDIUM"
-
             score += 1
             actions.add(
-                "Monitorizar acumulação de água"
+                "Monitorizar acumulacao de agua"
             )
 
         if (
             (gust is not None and gust >= 90)
             or (wind is not None and wind >= 70)
         ):
-            if (
-                gust is not None
-                and gust >= 100
-            ):
+            if gust is not None and gust >= 100:
                 categories["wind"] = "HIGH"
                 score += 3
             else:
                 if categories["wind"] != "HIGH":
                     categories["wind"] = "MEDIUM"
-
                 score += 1
 
             actions.add(
@@ -307,7 +612,7 @@ def calculate_risk(
             categories["temperature"] = "MEDIUM"
             score += 1
             actions.add(
-                "Manter hidratação e proteger pessoas vulneráveis do calor"
+                "Manter hidratacao e proteger pessoas vulneraveis"
             )
 
     if (
@@ -316,27 +621,20 @@ def calculate_risk(
     ):
         categories["coastal"] = "MEDIUM"
         actions.add(
-            "Evitar arribas, zonas expostas e acessos costeiros durante temporal"
+            "Evitar arribas e acessos costeiros durante temporal"
         )
 
     if open_meteo.get("status") == "success":
-        open_meteo_daily = (
-            open_meteo
-            .get("data", {})
-            .get("daily", {})
-        )
+        daily = open_meteo.get("data", {}).get("daily", {})
 
-        for rain_value in open_meteo_daily.get(
-            "precipitation_sum",
-            [],
-        )[:3]:
+        for rain_value in daily.get("precipitation_sum", [])[:3]:
             if (
                 isinstance(rain_value, (int, float))
                 and rain_value >= 40
             ):
                 score += 1
                 actions.add(
-                    "Confirmar a evolução da chuva nas atualizações IPMA"
+                    "Confirmar a evolucao da chuva nas atualizacoes IPMA"
                 )
                 break
 
@@ -362,23 +660,24 @@ def generate_report(
     timestamp: str,
 ) -> str:
     record = location.get("record", {})
-    location_id = record.get(
-        "globalIdLocal",
-        record.get("global_id_local", IPMA_GLOBAL_ID_FALLBACK),
-    )
+    global_id = first_value(
+        record,
+        ("globalIdLocal", "global_id_local"),
+    ) or IPMA_GLOBAL_ID_FALLBACK
 
     distance = location.get("distance_km")
-    if isinstance(distance, (int, float)):
-        distance_text = f"{distance:.1f} km"
-    else:
-        distance_text = "nao determinada"
+    distance_text = (
+        f"{distance:.1f} km"
+        if isinstance(distance, (int, float))
+        else "nao determinada"
+    )
 
     lines = [
-        f"# Relatorio meteorologico e de risco - {LOCATION_NAME}",
+        f"# Relatorio meteorologico - {LOCATION_NAME}",
         "",
         f"**Atualizado:** {timestamp}",
         f"**Coordenadas:** {LAT}, {LON}",
-        f"**Localidade IPMA:** {location_id}",
+        f"**GlobalIdLocal IPMA:** {global_id}",
         f"**Distancia aproximada:** {distance_text}",
         "",
         "> Este relatorio apoia a preparacao local. "
@@ -403,13 +702,14 @@ def generate_report(
     else:
         lines.append("- Sem acoes adicionais identificadas.")
 
-    daily_payload = sources.get("ipma_daily", {}).get("data", {})
-    daily_records = flatten_daily(daily_payload)
+    daily_records = flatten_daily(
+        sources.get("ipma_daily", {}).get("data", {})
+    )
 
     lines.extend(
         [
             "",
-            "## Previsao diaria IPMA",
+            "## Previsao diaria IPMA ate 5 dias",
             "",
             "| Data | Temperatura maxima | Precipitacao/probabilidade | Vento |",
             "|---|---:|---:|---:|",
@@ -417,67 +717,130 @@ def generate_report(
     )
 
     for item in daily_records[:5]:
-        date_value = item.get(
-            "forecastDate",
-            item.get("date", item.get("time", "N/D")),
+        date_value = first_value(
+            item,
+            ("forecastDate", "date", "time"),
+        ) or "N/D"
+        temperature = first_value(
+            item,
+            ("tMax", "temperatureMax", "temp_max"),
         )
-        temperature = item.get(
-            "tMax",
-            item.get("temperatureMax", item.get("temp_max", "N/D")),
-        )
-        precipitation = item.get(
-            "precipitaProb",
-            item.get(
+        precipitation = first_value(
+            item,
+            (
+                "precipitaProb",
                 "precipitationProbability",
-                item.get("precipitation", "N/D"),
+                "precipitation",
             ),
         )
-        wind = item.get(
-            "predWindSpeed",
-            item.get("windSpeed", item.get("wind_speed", "N/D")),
+        wind = first_value(
+            item,
+            ("predWindSpeed", "windSpeed", "wind_speed"),
         )
 
         lines.append(
-            f"| {date_value} | {temperature} | "
-            f"{precipitation} | {wind} |"
+            f"| {date_value} | {temperature or 'N/D'} | "
+            f"{precipitation or 'N/D'} | {wind or 'N/D'} |"
         )
 
     if not daily_records:
-        lines.append("| Dados IPMA nao disponiveis | N/D | N/D | N/D |")
-
-    lines.extend(["", "## Avisos IPMA", ""])
-
-    warnings = sources.get("warnings", {}).get("relevant", [])
-
-    if warnings:
-        for warning in warnings:
-            warning_text = json.dumps(
-                warning,
-                ensure_ascii=False,
-            )
-            lines.append(f"- `{warning_text}`")
-    else:
         lines.append(
-            "- Sem aviso relevante identificado para Almada/Setubal."
+            "| Dados IPMA nao disponiveis ou estrutura nao reconhecida | N/D | N/D | N/D |"
         )
 
     lines.extend(
         [
             "",
-            "## Fontes",
+            "## Avisos IPMA para os proximos 3 dias",
+            "",
+        ]
+    )
+
+    warning_source = sources.get("warnings", {})
+    warnings = warning_source.get("relevant", [])
+
+    if warnings:
+        lines.append(f"**Avisos encontrados:** {len(warnings)}")
+        lines.append("")
+
+        for warning in warnings:
+            area = first_value(
+                warning,
+                (
+                    "idAreaAviso",
+                    "area",
+                    "district",
+                    "local",
+                ),
+            ) or "N/D"
+            phenomenon = first_value(
+                warning,
+                (
+                    "awarenessTypeName",
+                    "phenomenon",
+                    "type",
+                    "description",
+                ),
+            ) or "N/D"
+            level = first_value(
+                warning,
+                (
+                    "awarenessLevelID",
+                    "level",
+                    "color",
+                    "severity",
+                ),
+            ) or "N/D"
+            start = first_value(
+                warning,
+                ("startTime", "start", "dtInicio"),
+            ) or "N/D"
+            end = first_value(
+                warning,
+                ("endTime", "end", "dtFim"),
+            ) or "N/D"
+
+            lines.extend(
+                [
+                    f"- **Area:** {area}",
+                    f"  **Fenomeno:** {phenomenon}",
+                    f"  **Nivel:** {level}",
+                    f"  **Inicio:** {start}",
+                    f"  **Fim:** {end}",
+                ]
+            )
+    else:
+        lines.append(
+            "Nao foram identificados avisos IPMA aplicaveis a Setubal/Almada."
+        )
+        lines.append(
+            f"Registos recebidos pelo endpoint: "
+            f"{warning_source.get('total_records', 'N/D')}"
+        )
+
+    if warning_source.get("status") != "success":
+        lines.append("")
+        lines.append(
+            f"Erro na consulta aos avisos IPMA: "
+            f"{warning_source.get('error', 'erro desconhecido')}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Outras fontes",
             "",
             f"- IPMA avisos: {IPMA_WARNINGS_URL}",
-            f"- IPMA previsao diaria: "
-            f"{IPMA_DAILY_TEMPLATE.format(global_id=location_id)}",
-            "- Open-Meteo com ECMWF IFS: previsao numerica auxiliar.",
+            f"- IPMA previsao local: {IPMA_DAILY_TEMPLATE.format(global_id=global_id)}",
+            f"- IPMA curto prazo dias 1-3: {IPMA_HP_TEMPLATE.format(id_day='{idDay}')}",
+            "- Open-Meteo com ECMWF IFS: previsao numerica auxiliar ate 7 dias.",
             "- NOAA CPC ONI: contexto ENSO, nao previsao local.",
-            "- ECMWF/Copernicus: referencia para previsao sazonal.",
+            "- ECMWF/Copernicus: referencia adequada para previsao sazonal.",
             "",
             "## Limites",
             "",
-            "O score e um indicador operacional de severidade prevista. "
-            "Nao representa a probabilidade estatistica de ocorrencia de "
-            "um desastre local.",
+            "O score e um indicador de severidade operacional prevista. "
+            "Nao representa a probabilidade estatistica de um desastre local.",
         ]
     )
 
@@ -494,27 +857,31 @@ def main() -> None:
 
     record = location.get("record", {})
     global_id = str(
-        record.get(
-            "globalIdLocal",
-            record.get("global_id_local", IPMA_GLOBAL_ID_FALLBACK),
-        )
+        first_value(
+            record,
+            ("globalIdLocal", "global_id_local"),
+        ) or IPMA_GLOBAL_ID_FALLBACK
     )
 
-    print(f"Localidade IPMA selecionada: {global_id}")
+    print(f"GlobalIdLocal IPMA: {global_id}")
 
     print("A recolher avisos IPMA...")
     warnings = fetch_ipma_warnings()
+    print(
+        f"Avisos recebidos: {warnings.get('total_records', 0)}; "
+        f"relevantes: {warnings.get('relevant_count', 0)}"
+    )
 
     print("A recolher previsao diaria IPMA...")
     ipma_daily = fetch_ipma_daily(global_id)
 
-    print("A recolher previsoes IPMA de curto prazo...")
+    print("A recolher previsao IPMA dos dias 1-3...")
     ipma_hp = fetch_ipma_hp_days()
 
-    print("A recolher previsao Open-Meteo/ECMWF...")
+    print("A recolher previsao auxiliar ECMWF IFS...")
     open_meteo = fetch_open_meteo()
 
-    print("A recolher contexto NOAA...")
+    print("A recolher contexto NOAA ONI...")
     noaa = fetch_noaa_enso()
 
     sources = {
@@ -532,7 +899,6 @@ def main() -> None:
         open_meteo,
     )
 
-    print("A gerar relatorio...")
     report = generate_report(
         location,
         sources,
@@ -567,8 +933,7 @@ def main() -> None:
 
     print(f"Relatorio criado: {report_path}")
     print(f"Dados criados: {data_path}")
-    print(f"Risco operacional: {risk['overall']}")
-    print(f"Score: {risk['score']}")
+    print(f"Risco: {risk['overall']} | Score: {risk['score']}")
 
 
 if __name__ == "__main__":
