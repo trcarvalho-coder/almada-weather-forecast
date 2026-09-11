@@ -234,4 +234,4 @@ def calculate_risk(ipma_daily: dict[str, Any], warnings: dict[str, Any], open_me
             score += 3 if categories["wind"] == "HIGH" else 1
             actions.add("Fixar objetos exteriores e verificar a cobertura")
         if tmax is not None and tmax >= 30:
-            categories["temperat
+            categories["temperature"] = "MEDIUM"
