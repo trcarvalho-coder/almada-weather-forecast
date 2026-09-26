@@ -1,6 +1,6 @@
 # Relatorio meteorologico - Funchalinho, Almada
 
-**Atualizado:** 2026-09-25 21:14 WEST
+**Atualizado:** 2026-09-26 09:15 WEST
 **Coordenadas:** 38.641, -9.169
 **GlobalIdLocal IPMA:** 1110600
 **Localidade IPMA:** Almada ou localidade automatica mais proxima
@@ -35,35 +35,35 @@
 
 | Data | Temp. maxima | Precipitacao/probabilidade | Vento |
 |---|---:|---:|---:|
-| 2026-09-25 | 30.8 | 0.0 | N/D |
-| 2026-09-26 | 31.8 | 0.0 | N/D |
-| 2026-09-27 | 29.2 | 6.0 | N/D |
-| 2026-09-28 | 24.9 | 37.0 | N/D |
-| 2026-09-29 | 24.2 | 76.0 | N/D |
+| 2026-09-26 | 34.0 | 0.0 | N/D |
+| 2026-09-27 | 28.6 | 0.0 | N/D |
+| 2026-09-28 | 25.8 | 12.0 | N/D |
+| 2026-09-29 | 27.0 | 47.0 | N/D |
+| 2026-09-30 | 24.3 | 84.0 | N/D |
 
 ## Previsao Open-Meteo / ECMWF IFS ate 7 dias
 
 | Data | Temp. maxima | Temp. minima | Chuva | Prob. chuva | Rajadas |
 |---|---:|---:|---:|---:|---:|
-| 2026-09-25 | 31.1 | 17.2 | 0.0 | 0 | 40.7 |
-| 2026-09-26 | 33.4 | 19.1 | 0.0 | 0 | 47.5 |
-| 2026-09-27 | 28.6 | 20.3 | 0.0 | 6 | 40.0 |
-| 2026-09-28 | 24.4 | 18.6 | 0.0 | 14 | 38.2 |
-| 2026-09-29 | 26.1 | 19.6 | 0.0 | 50 | 56.5 |
-| 2026-09-30 | 23.9 | 18.4 | 4.0 | 57 | 46.8 |
-| 2026-10-01 | 24.5 | 15.7 | 0.0 | 8 | 44.3 |
+| 2026-09-26 | 34.0 | 19.7 | 0.0 | 0 | 47.5 |
+| 2026-09-27 | 29.4 | 20.0 | 0.0 | 2 | 44.6 |
+| 2026-09-28 | 26.9 | 18.2 | 0.0 | 14 | 32.8 |
+| 2026-09-29 | 23.4 | 19.0 | 0.0 | 39 | 54.0 |
+| 2026-09-30 | 21.9 | 18.1 | 13.8 | 57 | 46.8 |
+| 2026-10-01 | 23.9 | 15.8 | 0.0 | 4 | 44.3 |
+| 2026-10-02 | 24.5 | 15.0 | 0.0 | 0 | 41.4 |
 
 ## Avisos IPMA - distrito de Setubal
 
 **Avisos encontrados:** 8
-- `{"text": "", "awarenessTypeName": "Agitação Marítima", "idAreaAviso": "STB", "startTime": "2026-09-25T16:25:00", "awarenessLevelID": "green", "endTime": "2026-09-28T16:00:00"}`
-- `{"text": "", "awarenessTypeName": "Nevoeiro", "idAreaAviso": "STB", "startTime": "2026-09-25T16:25:00", "awarenessLevelID": "green", "endTime": "2026-09-28T16:00:00"}`
-- `{"text": "", "awarenessTypeName": "Tempo Quente", "idAreaAviso": "STB", "startTime": "2026-09-25T16:25:00", "awarenessLevelID": "green", "endTime": "2026-09-28T16:00:00"}`
-- `{"text": "", "awarenessTypeName": "Tempo Frio", "idAreaAviso": "STB", "startTime": "2026-09-25T16:25:00", "awarenessLevelID": "green", "endTime": "2026-09-28T16:00:00"}`
-- `{"text": "", "awarenessTypeName": "Precipitação", "idAreaAviso": "STB", "startTime": "2026-09-25T16:25:00", "awarenessLevelID": "green", "endTime": "2026-09-28T16:00:00"}`
-- `{"text": "", "awarenessTypeName": "Neve", "idAreaAviso": "STB", "startTime": "2026-09-25T16:25:00", "awarenessLevelID": "green", "endTime": "2026-09-28T16:00:00"}`
-- `{"text": "", "awarenessTypeName": "Trovoada", "idAreaAviso": "STB", "startTime": "2026-09-25T16:25:00", "awarenessLevelID": "green", "endTime": "2026-09-28T16:00:00"}`
-- `{"text": "", "awarenessTypeName": "Vento", "idAreaAviso": "STB", "startTime": "2026-09-25T16:25:00", "awarenessLevelID": "green", "endTime": "2026-09-28T16:00:00"}`
+- `{"text": "", "awarenessTypeName": "Agitação Marítima", "idAreaAviso": "STB", "startTime": "2026-09-26T06:26:00", "awarenessLevelID": "green", "endTime": "2026-09-29T06:00:00"}`
+- `{"text": "", "awarenessTypeName": "Nevoeiro", "idAreaAviso": "STB", "startTime": "2026-09-26T06:26:00", "awarenessLevelID": "green", "endTime": "2026-09-29T06:00:00"}`
+- `{"text": "", "awarenessTypeName": "Tempo Quente", "idAreaAviso": "STB", "startTime": "2026-09-26T06:26:00", "awarenessLevelID": "green", "endTime": "2026-09-29T06:00:00"}`
+- `{"text": "", "awarenessTypeName": "Tempo Frio", "idAreaAviso": "STB", "startTime": "2026-09-26T06:26:00", "awarenessLevelID": "green", "endTime": "2026-09-29T06:00:00"}`
+- `{"text": "", "awarenessTypeName": "Precipitação", "idAreaAviso": "STB", "startTime": "2026-09-26T06:26:00", "awarenessLevelID": "green", "endTime": "2026-09-29T06:00:00"}`
+- `{"text": "", "awarenessTypeName": "Neve", "idAreaAviso": "STB", "startTime": "2026-09-26T06:26:00", "awarenessLevelID": "green", "endTime": "2026-09-29T06:00:00"}`
+- `{"text": "", "awarenessTypeName": "Trovoada", "idAreaAviso": "STB", "startTime": "2026-09-26T06:26:00", "awarenessLevelID": "green", "endTime": "2026-09-29T06:00:00"}`
+- `{"text": "", "awarenessTypeName": "Vento", "idAreaAviso": "STB", "startTime": "2026-09-26T06:26:00", "awarenessLevelID": "green", "endTime": "2026-09-29T06:00:00"}`
 
 ## Fontes
 
