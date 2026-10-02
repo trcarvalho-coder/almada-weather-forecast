@@ -1,20 +1,20 @@
 # Relatorio meteorologico - Funchalinho, Almada
 
-**Atualizado:** 2026-10-02 09:17 WEST
+**Atualizado:** 2026-10-02 21:15 WEST
 **Coordenadas:** 38.641, -9.169
 **GlobalIdLocal IPMA:** 1110600
 **Localidade IPMA:** Almada ou localidade automatica mais proxima
 
 > Este relatorio apoia a preparacao local. Nao substitui avisos oficiais.
 
-## Nivel operacional: LOW
+## Nivel operacional: MEDIUM
 
-**Score:** 1
+**Score:** 3
 
 | Categoria | Nivel |
 |---|---|
 | Wind | LOW |
-| Rain | MEDIUM |
+| Rain | HIGH |
 | Coastal | MEDIUM |
 | Temperature | LOW |
 
@@ -22,6 +22,7 @@
 
 - [ ] Evitar arribas e acessos costeiros durante temporal
 - [ ] Monitorizar acumulacao de agua
+- [ ] Verificar caleiras, sumidouros e drenagem
 
 ## Estacao IPMA mais proxima
 
@@ -33,35 +34,35 @@
 
 | Data | Temp. maxima | Precipitacao/probabilidade | Vento |
 |---|---:|---:|---:|
-| 2026-10-02 | 29.1 | 0.0 | N/D |
-| 2026-10-03 | 27.6 | 57.0 | N/D |
-| 2026-10-04 | 26.0 | 37.0 | N/D |
-| 2026-10-05 | 25.9 | 25.0 | N/D |
-| 2026-10-06 | 25.0 | 51.0 | N/D |
+| 2026-10-02 | 29.7 | 0.0 | N/D |
+| 2026-10-03 | 28.0 | 40.0 | N/D |
+| 2026-10-04 | 26.8 | 55.0 | N/D |
+| 2026-10-05 | 25.7 | 24.0 | N/D |
+| 2026-10-06 | 25.3 | 73.0 | N/D |
 
 ## Previsao Open-Meteo / ECMWF IFS ate 7 dias
 
 | Data | Temp. maxima | Temp. minima | Chuva | Prob. chuva | Rajadas |
 |---|---:|---:|---:|---:|---:|
-| 2026-10-02 | 28.0 | 14.9 | 0.0 | 0 | 33.8 |
-| 2026-10-03 | 27.5 | 19.3 | 0.1 | 43 | 30.6 |
-| 2026-10-04 | 27.3 | 18.9 | 0.6 | 25 | 29.5 |
-| 2026-10-05 | 24.6 | 17.7 | 0.0 | 25 | 33.5 |
-| 2026-10-06 | 24.4 | 18.8 | 0.9 | 45 | 34.2 |
-| 2026-10-07 | 24.5 | 17.0 | 0.5 | 49 | 51.5 |
-| 2026-10-08 | 26.5 | 16.3 | 0.2 | 12 | 42.8 |
+| 2026-10-02 | 28.7 | 15.3 | 0.0 | 0 | 33.8 |
+| 2026-10-03 | 26.7 | 18.9 | 1.3 | 48 | 30.2 |
+| 2026-10-04 | 25.3 | 19.1 | 2.6 | 46 | 28.8 |
+| 2026-10-05 | 25.8 | 17.4 | 0.3 | 12 | 27.7 |
+| 2026-10-06 | 22.6 | 17.6 | 1.1 | 55 | 34.2 |
+| 2026-10-07 | 23.5 | 16.7 | 0.5 | 53 | 51.5 |
+| 2026-10-08 | 25.9 | 15.8 | 0.2 | 22 | 42.8 |
 
 ## Avisos IPMA - distrito de Setubal
 
 **Avisos encontrados:** 8
-- `{"text": "", "awarenessTypeName": "Agitação Marítima", "idAreaAviso": "STB", "startTime": "2026-10-02T06:25:00", "awarenessLevelID": "green", "endTime": "2026-10-05T06:00:00"}`
-- `{"text": "", "awarenessTypeName": "Nevoeiro", "idAreaAviso": "STB", "startTime": "2026-10-02T06:25:00", "awarenessLevelID": "green", "endTime": "2026-10-05T06:00:00"}`
-- `{"text": "", "awarenessTypeName": "Tempo Quente", "idAreaAviso": "STB", "startTime": "2026-10-02T06:25:00", "awarenessLevelID": "green", "endTime": "2026-10-05T06:00:00"}`
-- `{"text": "", "awarenessTypeName": "Tempo Frio", "idAreaAviso": "STB", "startTime": "2026-10-02T06:25:00", "awarenessLevelID": "green", "endTime": "2026-10-05T06:00:00"}`
-- `{"text": "", "awarenessTypeName": "Precipitação", "idAreaAviso": "STB", "startTime": "2026-10-02T06:25:00", "awarenessLevelID": "green", "endTime": "2026-10-05T06:00:00"}`
-- `{"text": "", "awarenessTypeName": "Neve", "idAreaAviso": "STB", "startTime": "2026-10-02T06:25:00", "awarenessLevelID": "green", "endTime": "2026-10-05T06:00:00"}`
-- `{"text": "", "awarenessTypeName": "Trovoada", "idAreaAviso": "STB", "startTime": "2026-10-02T06:25:00", "awarenessLevelID": "green", "endTime": "2026-10-05T06:00:00"}`
-- `{"text": "", "awarenessTypeName": "Vento", "idAreaAviso": "STB", "startTime": "2026-10-02T06:25:00", "awarenessLevelID": "green", "endTime": "2026-10-05T06:00:00"}`
+- `{"text": "", "awarenessTypeName": "Agitação Marítima", "idAreaAviso": "STB", "startTime": "2026-10-02T18:18:00", "awarenessLevelID": "green", "endTime": "2026-10-05T18:00:00"}`
+- `{"text": "", "awarenessTypeName": "Nevoeiro", "idAreaAviso": "STB", "startTime": "2026-10-02T18:18:00", "awarenessLevelID": "green", "endTime": "2026-10-05T18:00:00"}`
+- `{"text": "", "awarenessTypeName": "Tempo Quente", "idAreaAviso": "STB", "startTime": "2026-10-02T18:18:00", "awarenessLevelID": "green", "endTime": "2026-10-05T18:00:00"}`
+- `{"text": "", "awarenessTypeName": "Tempo Frio", "idAreaAviso": "STB", "startTime": "2026-10-02T18:18:00", "awarenessLevelID": "green", "endTime": "2026-10-05T18:00:00"}`
+- `{"text": "", "awarenessTypeName": "Precipitação", "idAreaAviso": "STB", "startTime": "2026-10-02T18:18:00", "awarenessLevelID": "green", "endTime": "2026-10-05T18:00:00"}`
+- `{"text": "", "awarenessTypeName": "Neve", "idAreaAviso": "STB", "startTime": "2026-10-02T18:18:00", "awarenessLevelID": "green", "endTime": "2026-10-05T18:00:00"}`
+- `{"text": "", "awarenessTypeName": "Trovoada", "idAreaAviso": "STB", "startTime": "2026-10-02T18:18:00", "awarenessLevelID": "green", "endTime": "2026-10-05T18:00:00"}`
+- `{"text": "", "awarenessTypeName": "Vento", "idAreaAviso": "STB", "startTime": "2026-10-02T18:18:00", "awarenessLevelID": "green", "endTime": "2026-10-05T18:00:00"}`
 
 ## Fontes
 
