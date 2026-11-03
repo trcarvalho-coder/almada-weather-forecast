@@ -1,6 +1,6 @@
 # Relatorio meteorologico - Funchalinho, Almada
 
-**Atualizado:** 2026-11-02 18:02 WET
+**Atualizado:** 2026-11-03 02:06 WET
 **Coordenadas:** 38.641, -9.169
 **GlobalIdLocal IPMA:** 1110600
 **Localidade IPMA:** Almada ou localidade automatica mais proxima
@@ -9,19 +9,18 @@
 
 ## Nivel operacional: LOW
 
-**Score:** 1
+**Score:** 0
 
 | Categoria | Nivel |
 |---|---|
 | Wind | LOW |
-| Rain | MEDIUM |
-| Coastal | MEDIUM |
+| Rain | LOW |
+| Coastal | LOW |
 | Temperature | LOW |
 
 ## Acoes recomendadas
 
-- [ ] Evitar arribas e acessos costeiros durante temporal
-- [ ] Monitorizar acumulacao de agua
+- Sem acoes adicionais identificadas.
 
 ## Estacao IPMA mais proxima
 
@@ -33,35 +32,24 @@
 
 | Data | Temp. maxima | Precipitacao/probabilidade | Vento |
 |---|---:|---:|---:|
-| 2026-11-02 | 25.9 | 0.0 | N/D |
-| 2026-11-03 | 22.2 | 0.0 | N/D |
-| 2026-11-04 | 20.0 | 0.0 | N/D |
-| 2026-11-05 | 18.9 | 0.0 | N/D |
-| 2026-11-06 | 19.7 | 35.0 | N/D |
+| Dados IPMA nao disponiveis | N/D | N/D | N/D |
 
 ## Previsao Open-Meteo / ECMWF IFS ate 7 dias
 
 | Data | Temp. maxima | Temp. minima | Chuva | Prob. chuva | Rajadas |
 |---|---:|---:|---:|---:|---:|
-| 2026-11-02 | 25.8 | 14.8 | 0.0 | 0 | 20.9 |
-| 2026-11-03 | 22.9 | 13.1 | 0.0 | 0 | 26.6 |
-| 2026-11-04 | 20.0 | 11.0 | 0.0 | 0 | 27.7 |
-| 2026-11-05 | 18.5 | 9.6 | 0.0 | 0 | 26.6 |
-| 2026-11-06 | 19.3 | 10.2 | 6.9 | 47 | 22.7 |
-| 2026-11-07 | 19.4 | 15.5 | 8.5 | 54 | 45.0 |
-| 2026-11-08 | 22.5 | 14.1 | 0.7 | 73 | 44.6 |
+| 2026-11-03 | 23.1 | 13.2 | 0.0 | 0 | 25.2 |
+| 2026-11-04 | 20.6 | 11.2 | 0.0 | 0 | 28.8 |
+| 2026-11-05 | 18.6 | 10.0 | 0.0 | 0 | 24.5 |
+| 2026-11-06 | 17.4 | 11.9 | 15.2 | 65 | 24.8 |
+| 2026-11-07 | 19.8 | 16.5 | 1.2 | 55 | 45.0 |
+| 2026-11-08 | 21.1 | 16.3 | 21.5 | 75 | 51.8 |
+| 2026-11-09 | 20.1 | 15.4 | 19.7 | 98 | 53.3 |
 
 ## Avisos IPMA - distrito de Setubal
 
-**Avisos encontrados:** 8
-- `{"text": "", "awarenessTypeName": "Agitação Marítima", "idAreaAviso": "STB", "startTime": "2026-11-02T11:34:00", "awarenessLevelID": "green", "endTime": "2026-11-05T11:00:00"}`
-- `{"text": "", "awarenessTypeName": "Nevoeiro", "idAreaAviso": "STB", "startTime": "2026-11-02T11:34:00", "awarenessLevelID": "green", "endTime": "2026-11-05T11:00:00"}`
-- `{"text": "", "awarenessTypeName": "Tempo Quente", "idAreaAviso": "STB", "startTime": "2026-11-02T11:34:00", "awarenessLevelID": "green", "endTime": "2026-11-05T11:00:00"}`
-- `{"text": "", "awarenessTypeName": "Tempo Frio", "idAreaAviso": "STB", "startTime": "2026-11-02T11:34:00", "awarenessLevelID": "green", "endTime": "2026-11-05T11:00:00"}`
-- `{"text": "", "awarenessTypeName": "Precipitação", "idAreaAviso": "STB", "startTime": "2026-11-02T11:34:00", "awarenessLevelID": "green", "endTime": "2026-11-05T11:00:00"}`
-- `{"text": "", "awarenessTypeName": "Neve", "idAreaAviso": "STB", "startTime": "2026-11-02T11:34:00", "awarenessLevelID": "green", "endTime": "2026-11-05T11:00:00"}`
-- `{"text": "", "awarenessTypeName": "Trovoada", "idAreaAviso": "STB", "startTime": "2026-11-02T11:34:00", "awarenessLevelID": "green", "endTime": "2026-11-05T11:00:00"}`
-- `{"text": "", "awarenessTypeName": "Vento", "idAreaAviso": "STB", "startTime": "2026-11-02T11:34:00", "awarenessLevelID": "green", "endTime": "2026-11-05T11:00:00"}`
+Nao foram identificados avisos IPMA aplicaveis a Setubal/Almada.
+Registos recebidos: 0
 
 ## Fontes
 
